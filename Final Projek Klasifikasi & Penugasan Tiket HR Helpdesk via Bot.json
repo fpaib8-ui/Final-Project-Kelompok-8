@@ -1,0 +1,584 @@
+{
+  "name": "Final Projek Klasifikasi & Penugasan Tiket HR Helpdesk via Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        624,
+        -80
+      ],
+      "id": "29263890-9342-4a89-94c4-9abea79b9dee",
+      "name": "Telegram Trigger",
+      "webhookId": "60163b46-368d-4a5d-9cd2-73cb0af1a951",
+      "credentials": {
+        "telegramApi": {
+          "id": "q33bHELI44RUBOuo",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer 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"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"openai/gpt-4o-mini\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"Kamu adalah HR Helpdesk Assistant. Tugasmu mengklasifikasikan keluhan karyawan ke dalam kategori Payroll, Benefit, atau Konflik serta menentukan prioritas High, Medium, atau Low. Balas hanya dengan JSON valid tanpa penjelasan tambahan.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Keluhan karyawan: {{$json.message.text}}. Format jawaban wajib: {\\\"category\\\":\\\"Payroll|Benefit|Konflik\\\",\\\"priority\\\":\\\"High|Medium|Low\\\"}\"\n    }\n  ],\n  \"temperature\": 0.1\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        832,
+        -80
+      ],
+      "id": "2ccef31b-3da4-43c9-a51d-3d709d28eb53",
+      "name": "AI Classification"
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiResponse = $json.choices[0].message.content;\n\n// Mengubah hasil JSON dari AI menjadi object JavaScript\nconst classificationResult = JSON.parse(aiResponse);\n\n// Mengambil pesan asli dari Telegram\nconst originalMessage = $('Telegram Trigger').first().json.message.text;\n\n// Mengirim data yang akan digunakan pada node berikutnya\nreturn [\n  {\n    json: {\n      category: classificationResult.category,\n      priority: classificationResult.priority,\n      user_message: originalMessage\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        -80
+      ],
+      "id": "3021cd2b-1e9d-4d5f-b611-645225233949",
+      "name": "Clean AI Result"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.category }}",
+                    "rightValue": "=Payroll",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "3d4b3a3c-b84c-423c-b99a-df87d394e9dc"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "27871e0c-f13c-48e0-9ffe-a3a4444c460e",
+                    "leftValue": "={{ $json.category }}",
+                    "rightValue": "=Benefit",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "88a9ce4d-61ef-4b31-9c0d-a8c3ebf9c37f",
+                    "leftValue": "={{ $json.category }}",
+                    "rightValue": "=Konflik",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        560,
+        304
+      ],
+      "id": "ca4c1106-3b56-4211-b975-30a95991fa63",
+      "name": "Switch Category"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "abd4c1d4-24f9-4b54-8dc5-56771a48785e",
+              "name": "list_id",
+              "value": "6a14d52cdfef6a2acf40baec",
+              "type": "string"
+            },
+            {
+              "id": "baa3587d-a8a9-43b1-ab0e-c46df039b24f",
+              "name": "member_id",
+              "value": "6a14d4ba8c8d2bb46f71b9b2",
+              "type": "string"
+            },
+            {
+              "id": "5832f806-0af5-4ea5-8d70-d62160f61083",
+              "name": "staff_name",
+              "value": "Jeonghan",
+              "type": "string"
+            },
+            {
+              "id": "35845adc-374d-45f0-8618-1452c62e7af0",
+              "name": "ticket_id",
+              "value": "=HR-{{ $now }}",
+              "type": "string"
+            },
+            {
+              "id": "a6a71143-f8d8-45a2-85a5-338c5423588c",
+              "name": "timestamp",
+              "value": "={{ $now }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        832,
+        144
+      ],
+      "id": "ef22c71d-9e8b-4fae-a5a8-b66f0525fc79",
+      "name": "Payroll"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "abd4c1d4-24f9-4b54-8dc5-56771a48785e",
+              "name": "list_id",
+              "value": "6a14d52cdfef6a2acf40baed",
+              "type": "string"
+            },
+            {
+              "id": "baa3587d-a8a9-43b1-ab0e-c46df039b24f",
+              "name": "member_id",
+              "value": "6a14d4ba8c8d2bb46f71b9b2",
+              "type": "string"
+            },
+            {
+              "id": "5832f806-0af5-4ea5-8d70-d62160f61083",
+              "name": "staff_name",
+              "value": "Chenle",
+              "type": "string"
+            },
+            {
+              "id": "35845adc-374d-45f0-8618-1452c62e7af0",
+              "name": "ticket_id",
+              "value": "=HR-{{ $now }}",
+              "type": "string"
+            },
+            {
+              "id": "a6a71143-f8d8-45a2-85a5-338c5423588c",
+              "name": "timestamp",
+              "value": "={{ $now }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        832,
+        320
+      ],
+      "id": "a7db527f-dcd6-4ea0-9c64-6d9b0f611525",
+      "name": "Benefit"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "abd4c1d4-24f9-4b54-8dc5-56771a48785e",
+              "name": "list_id",
+              "value": "6a14d52cdfef6a2acf40baee",
+              "type": "string"
+            },
+            {
+              "id": "baa3587d-a8a9-43b1-ab0e-c46df039b24f",
+              "name": "member_id",
+              "value": "6a14d4ba8c8d2bb46f71b9b2",
+              "type": "string"
+            },
+            {
+              "id": "5832f806-0af5-4ea5-8d70-d62160f61083",
+              "name": "staff_name",
+              "value": "Dowoon",
+              "type": "string"
+            },
+            {
+              "id": "35845adc-374d-45f0-8618-1452c62e7af0",
+              "name": "ticket_id",
+              "value": "=HR-{{ $now }}",
+              "type": "string"
+            },
+            {
+              "id": "a6a71143-f8d8-45a2-85a5-338c5423588c",
+              "name": "timestamp",
+              "value": "={{ $now }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        832,
+        496
+      ],
+      "id": "8f6d6b39-3272-4fd1-adfd-b28a08e574ca",
+      "name": "Konflik"
+    },
+    {
+      "parameters": {
+        "listId": "={{$json.list_id}}",
+        "name": "=[{{$json.ticket_id}}] {{$json.user_message}}",
+        "description": "=Kategori: {{$json.category}}\nPrioritas: {{$json.priority}}\nStaff: {{$json.staff_name}}\nWaktu: {{$json.timestamp}}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.trello",
+      "typeVersion": 1,
+      "position": [
+        1488,
+        192
+      ],
+      "id": "c7c7aac0-e3f2-4ebb-97e1-a979b9d1fa7f",
+      "name": "Create card",
+      "credentials": {
+        "trelloApi": {
+          "id": "U7J1JyVaQ1kG3Qx6",
+          "name": "Trello account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "label",
+        "operation": "addLabel",
+        "cardId": {
+          "__rl": true,
+          "value": "={{$json.id}}",
+          "mode": "id"
+        },
+        "id": "={{$node[\"Label ID\"].json[\"label_id\"]}}"
+      },
+      "type": "n8n-nodes-base.trello",
+      "typeVersion": 1,
+      "position": [
+        1664,
+        192
+      ],
+      "id": "3d96b2e5-2914-4052-b248-e70492eb31e3",
+      "name": "Add Label",
+      "credentials": {
+        "trelloApi": {
+          "id": "U7J1JyVaQ1kG3Qx6",
+          "name": "Trello account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Telegram Trigger\"].json[\"message\"][\"chat\"][\"id\"]}}",
+        "text": "=Halo 👋\n\nTiket Anda berhasil terdaftar pada sistem HR Helpdesk.\n\n📌 ID Tiket: {{$node[\"Label ID\"].json[\"ticket_id\"]}}\n\n📝 Keluhan:\n{{$node[\"Clean AI Result\"].json[\"user_message\"]}}\n\n📂 Kategori: {{$node[\"Label ID\"].json[\"category\"]}}\n⚠️ Prioritas: {{$node[\"Label ID\"].json[\"priority\"]}}\n👤 Staff HR: {{$node[\"Label ID\"].json[\"staff_name\"]}}\n\nTim HR telah menerima laporan Anda dan akan segera melakukan tindak lanjut sesuai kategori yang dipilih.\n\nTerima kasih atas kerja samanya.",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1840,
+        192
+      ],
+      "id": "0535c2d7-d415-41ef-b251-1bf9dfcb544e",
+      "name": "Kirim Pesan",
+      "webhookId": "14a8168d-8622-4f9d-a6d1-741752490bfe",
+      "credentials": {
+        "telegramApi": {
+          "id": "q33bHELI44RUBOuo",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2b877560-c514-4baf-a147-9c0de39abd3f",
+              "name": "label_id",
+              "value": "={{\n$json.priority === \"High\"\n? \"6a14d52cdfef6a2acf40baf6\"\n: $json.priority === \"Medium\"\n? \"6a14d52cdfef6a2acf40baf4\"\n: \"6a14d52cdfef6a2acf40baf3\"\n}}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1152,
+        320
+      ],
+      "id": "4add71d7-acad-4ceb-b47b-737e43e35f67",
+      "name": "Label ID"
+    },
+    {
+      "parameters": {
+        "content": "## INPUT & AI PROCESSING",
+        "height": 208,
+        "width": 704,
+        "color": "#792525"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        512,
+        -128
+      ],
+      "typeVersion": 1,
+      "id": "0c471a71-0213-4e81-825d-0bf708ab6ec1",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## ROUTING & ASSIGNMENT",
+        "height": 528,
+        "width": 784,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        512,
+        128
+      ],
+      "typeVersion": 1,
+      "id": "18d9031b-1d91-4764-bb74-150f4068d83b",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## TICKET MANAGEMENT & NOTIFICATION",
+        "height": 240,
+        "width": 608,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1392,
+        128
+      ],
+      "typeVersion": 1,
+      "id": "02850b40-dd86-4206-b712-453492495bf2",
+      "name": "Sticky Note2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Classification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Classification": {
+      "main": [
+        [
+          {
+            "node": "Clean AI Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean AI Result": {
+      "main": [
+        [
+          {
+            "node": "Switch Category",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch Category": {
+      "main": [
+        [
+          {
+            "node": "Payroll",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Benefit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Konflik",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Payroll": {
+      "main": [
+        [
+          {
+            "node": "Label ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Benefit": {
+      "main": [
+        [
+          {
+            "node": "Label ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konflik": {
+      "main": [
+        [
+          {
+            "node": "Label ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create card": {
+      "main": [
+        [
+          {
+            "node": "Add Label",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Label": {
+      "main": [
+        [
+          {
+            "node": "Kirim Pesan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Label ID": {
+      "main": [
+        [
+          {
+            "node": "Create card",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "a0bb7095-5d36-45be-b0e5-0df8eaf664d8",
+  "meta": {
+    "instanceId": "41396e4a2d0acaadd31ad22680fe47e58e0a259b1e6e4a98d32010ba0c67d0b8"
+  },
+  "id": "I5hLLzmVWxVbe0GZ",
+  "tags": []
+}
